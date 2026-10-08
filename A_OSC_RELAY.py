@@ -80,7 +80,7 @@ class Playback:
         self.started = now
 
     def command(self, scene, now):
-        if scene != self.scene:
+        if scene != self.scene or self.requested is not None:
             self.requested = scene
 
     def due(self, now, connected):

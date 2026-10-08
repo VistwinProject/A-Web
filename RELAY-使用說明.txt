@@ -1,0 +1,27 @@
+A 區 OSC 轉送服務
+
+在 TD 電腦（192.168.200.143）執行，手機與電腦在可互通的同一網路。
+方法一：A_OSC_RELAY.py 與 START-RELAY.cmd 放同一資料夾，雙擊 START-RELAY.cmd。
+方法二：將 A_OSC_RELAY.py 全部程式碼貼進 TD 的 Text DAT，按 Run Script。
+TD 內執行時需儲存該 DAT，重開專案後再次 Run Script。
+重複執行會關閉該份程式自己的舊服務，再啟動新服務。
+關閉服務：關閉啟動視窗；TD 內則執行 A_OSC_RELAY_INSTANCE.stop()。
+
+手機開 https://vistwinproject.github.io/A-Web/A_ZONE_OSC.html
+點右上角 OSC 設定，只填 192.168.200.143，按連線。
+不需要配對碼或 VPN。
+
+預設 Web TCP 8788；OSC 發送 127.0.0.1:9200；OSC 回傳 UDP 9202。
+TD 使用已更新的 A_CENTER_OSC.51（或更新版），需包含 /ac/scene、/ac/view、/ac/web/ping 回報。
+Scene1..5=/ac/scene 0..4；NO_VIEW=/ac/view 0；顯示=/ac/view 1。
+收到真正 TD 回報才啟用控制，保留 A→B 同步與切幕效果。
+服務不修改 TD 節點、影片、效果，不提供 Python 執行入口。
+8788 或 9202 被佔用時先關閉另一個 A 區轉送服务，不要同時啟動兩份。
+修改 Port：python A_OSC_RELAY.py --http-port 8788 --osc-port 9200 --reply-port 9202
+
+iPhone Safari 的 HTTPS 網頁→區網 HTTP 是否允許，取決於瀏覽器版本。
+允許時只填 IP 即可；若被瀏覽器阻擋，CORS 或 OSC 程式無法繞過。
+該情況需使用手機信任憑證的 HTTPS 轉送服務。
+程式支援：python A_OSC_RELAY.py --cert cert.pem --key key.pem
+網頁 IP 欄此時可填 https://192.168.200.143:8788。
+需自行準備手機信任、SAN 包含該 IP 的憑證；程式不會產生假信任憑證。

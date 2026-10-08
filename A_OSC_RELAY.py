@@ -62,17 +62,18 @@ class Playback:
 
     def observe(self, state, now, reconnected=False):
         changed = self.scene != state['sceneIndex']
-        if changed or reconnected or (not self.view and state['view']):
+        confirmed = self.requested == state['sceneIndex']
+        if confirmed or (self.requested is None and (changed or reconnected or (not self.view and state['view']))):
             self.started = now
-        if changed or self.requested == state['sceneIndex']:
+        if confirmed:
             self.requested = None
         self.scene, self.view = state['sceneIndex'], state['view']
 
     def mode(self, value, now):
         if type(value) is not int or value not in (0, 1):
             raise ValueError('播放模式需為 0（手動）或 1（自動）')
-        if self.automatic != bool(value):
-            self.automatic, self.started = bool(value), now
+        self.automatic, self.started = bool(value), now
+        self.requested = 0 if value else None
 
     def configure(self, values, now):
         self.durations = validate_playback(dict(durations=values))['durations']
@@ -96,7 +97,7 @@ class Playback:
         paused = 'disconnected' if not connected else 'NO_VIEW' if not self.view else None
         remaining = (duration if paused else max(0, duration - (now - self.started))) if self.automatic and duration is not None else None
         return dict(automatic=self.automatic, durations=self.durations[:], remaining=remaining,
-                    waitingHand=self.automatic and self.scene == 2, paused=paused, source='relay')
+                    waitingHand=self.automatic and self.scene == 2, awaitingScene=self.requested, paused=paused, source='relay')
 
 
 def osc_string(value):
@@ -235,8 +236,17 @@ class Relay:
             raise ValueError('Scene 需為 0–4；View 需為 0／1')
         with self.lock:
             if kind == 'mode':
+                if value:
+                    if not self.status()['connected']:
+                        raise ValueError('TD 尚未回報，請確認 A 檔已開啟及 OSC 9200')
+                    address = self.config.get('sceneAddress', '/ac/scene')
+                    self.send(address, 0)
+                    self.pending['scene'] = 0
+                    self.record(address, 0, 'auto-restart')
                 self.auto.mode(value, time.monotonic())
-                return dict(sent=True, handledBy='relay', mode=value)
+                self.primary_at, self.hand_pending = time.monotonic(), False
+                self.send('/ac/web/ping', self.config['replyPort'])
+                return dict(sent=True, handledBy='relay', mode=value, restartScene=0 if value else None)
             if not self.status()['connected']:
                 raise ValueError('TD 尚未回報，請確認 A 檔已開啟及 OSC 9200')
             address = self.config.get(kind + 'Address', '/ac/' + kind)
@@ -263,6 +273,8 @@ class Relay:
                 reason = '放開或重複訊號'
             elif not self.status()['connected']:
                 reason = 'A 主機未連線'
+            elif not self.auto.automatic:
+                reason = '手動模式由 A 區主控選幕，手勢不切換'
             elif self.pending or time.monotonic() - self.primary_at < 1.5 or self.hand_pending:
                 reason = 'A 區主控正在切換'
             elif self.live['view'] != 1 or self.live['sceneIndex'] != 2:

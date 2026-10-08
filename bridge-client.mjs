@@ -5,9 +5,10 @@ export function bridgeOrigin(value){
  let input=value.trim();const ip=input.match(/^(\d{1,3}(?:\.\d{1,3}){3})(?::(\d+))?$/);
  if(ip){if(ip[1].split('.').some(x=>Number(x)>255||String(Number(x))!==x))throw Error('請輸入有效 IPv4 位址');const port=ip[2]?Number(ip[2]):8788;if(port<1||port>65535)throw Error('Port 必須介於 1–65535');input='http://'+ip[1]+':'+port;}
  let url;try{url=new URL(input);}catch{throw Error('請填電腦 IP，例如 192.168.200.143');}
- if(!['http:','https:'].includes(url.protocol)||url.username||url.password||url.search||url.hash||!['/','/A_ZONE_OSC.html'].includes(url.pathname))throw Error('請填電腦 IP 或不含帳號、參數的轉送網址');return url.origin;
+ const privatePath=/^\/[A-Za-z0-9_-]{32,96}\/?$/.test(url.pathname);
+ if(!['http:','https:'].includes(url.protocol)||url.username||url.password||url.search||url.hash||(!['/','/A_ZONE_OSC.html'].includes(url.pathname)&&!privatePath))throw Error('請填電腦 IP 或完整轉送網址');return url.origin+(privatePath?url.pathname.replace(/\/$/,''):'');
 }
-export function relayInput(base){const url=new URL(bridgeOrigin(base));return url.protocol==='http:'&&/^\d{1,3}(\.\d{1,3}){3}$/.test(url.hostname)?url.hostname+(url.port&&url.port!=='8788'?':'+url.port:''):url.origin;}
+export function relayInput(base){const normalized=bridgeOrigin(base),url=new URL(normalized);return url.pathname==='/'&&url.protocol==='http:'&&/^\d{1,3}(\.\d{1,3}){3}$/.test(url.hostname)?url.hostname+(url.port&&url.port!=='8788'?':'+url.port:''):normalized;}
 export function bridgeRequest(base,route,data){
  const origin=bridgeOrigin(base);if(!origin)throw Error('請在 OSC 設定填入電腦 IP');const options={cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(5000)};
  if(data){options.method='POST';options.headers={'Content-Type':'application/json'};options.body=JSON.stringify(data);}

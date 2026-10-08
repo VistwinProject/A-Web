@@ -5,6 +5,7 @@ import datetime
 import json
 import math
 import os
+import secrets
 import socket
 import ssl
 import struct
@@ -125,12 +126,21 @@ def decode_osc(packet):
 
 class Relay:
     def __init__(self, bind='0.0.0.0', http_port=8788, osc_host='127.0.0.1',
-                 osc_port=9200, reply_port=9202, cert=None, key=None, config_path=None):
+                 osc_port=9200, reply_port=9202, cert=None, key=None, config_path=None, path_key_file=None):
         socket.inet_aton(osc_host)
         for port in (http_port, osc_port, reply_port):
             if type(port) is not int or not 1 <= port <= 65535:
                 raise ValueError('Ports must be 1..65535')
         self.config = dict(host=osc_host, port=osc_port, replyPort=reply_port)
+        self.path_key = None
+        if path_key_file:
+            private_file = Path(path_key_file)
+            if not private_file.exists():
+                private_file.parent.mkdir(parents=True, exist_ok=True)
+                private_file.write_text(json.dumps({'path_key': secrets.token_urlsafe(32)}), encoding='utf-8')
+            self.path_key = json.loads(private_file.read_text(encoding='utf-8-sig'))['path_key']
+            if not isinstance(self.path_key, str) or not 32 <= len(self.path_key) <= 96 or any(c not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-' for c in self.path_key):
+                raise ValueError('Invalid relay URL key')
         self.bind, self.config_path = bind, Path(config_path) if config_path else None
         if self.config_path and self.config_path.exists():
             self.config = validate_config(json.loads(self.config_path.read_text(encoding='utf-8-sig')))
@@ -350,6 +360,16 @@ class Handler(BaseHTTPRequestHandler):
         origin = self.headers.get('Origin')
         return not origin or origin == 'https://vistwinproject.github.io' or urlsplit(origin).netloc == self.headers.get('Host')
 
+    def route(self):
+        path = urlsplit(self.path).path
+        key = self.server.relay.path_key
+        if key:
+            pieces = path.split('/', 2)
+            if len(pieces) != 3 or not secrets.compare_digest(pieces[1], key):
+                return None
+            return '/' + pieces[2]
+        return path
+
     def reply(self, code, data):
         payload = json.dumps(data, ensure_ascii=False).encode('utf-8')
         self.send_response(code)
@@ -369,19 +389,21 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(payload)
 
     def do_OPTIONS(self):
+        if self.route() is None:
+            return self.reply(404, {'error': 'Not found'})
         self.reply(204 if self.allowed() else 403, {})
 
     def do_GET(self):
         if not self.allowed():
             return self.reply(403, {'error': 'Origin denied'})
-        if urlsplit(self.path).path == '/api/status':
+        if self.route() == '/api/status':
             return self.reply(200, self.server.relay.status())
         self.reply(404, {'error': 'Not found'})
 
     def do_POST(self):
         if not self.allowed():
             return self.reply(403, {'error': 'Origin denied'})
-        route = urlsplit(self.path).path
+        route = self.route()
         routes = {'/api/command': 'command', '/api/hand': 'hand', '/api/config': 'configure', '/api/playback': 'playback'}
         if route not in routes:
             return self.reply(404, {'error': 'Not found'})
@@ -403,7 +425,7 @@ def start(**options):
     previous = getattr(builtins, '_ac_a_zone_osc_relay', None)
     if previous is not None:
         previous.stop()
-    if 'config_path' not in options:
+    if not options.get('config_path'):
         if 'td' in sys.modules:
             try:
                 options['config_path'] = str(Path(project.folder) / 'web/A_ZONE_OSC/config.json')
@@ -429,6 +451,8 @@ if __name__ == '__main__':
         parser.add_argument('--reply-port', type=int, default=9202)
         parser.add_argument('--cert')
         parser.add_argument('--key')
+        parser.add_argument('--config-path')
+        parser.add_argument('--path-key-file')
         instance = start(**vars(parser.parse_args()))
         try:
             threading.Event().wait()

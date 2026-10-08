@@ -1,5 +1,6 @@
 """A-zone HTTP -> OSC. Paste into a TD Text DAT and Run Script, or run Python."""
 import argparse
+import builtins
 import datetime
 import json
 import socket
@@ -233,11 +234,12 @@ class Handler(BaseHTTPRequestHandler):
 
 def start(**options):
     # A repeat run releases only this script's own previous relay.
-    previous = globals().get('A_OSC_RELAY_INSTANCE')
+    previous = getattr(builtins, '_ac_a_zone_osc_relay', None)
     if previous is not None:
         previous.stop()
     instance = Relay(**options).start()
     globals()['A_OSC_RELAY_INSTANCE'] = instance
+    builtins._ac_a_zone_osc_relay = instance
     return instance
 
 

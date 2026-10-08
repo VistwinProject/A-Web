@@ -5,7 +5,7 @@ A 區 OSC 轉送服務
 方法二：將 A_OSC_RELAY.py 全部程式碼貼進 TD 的 Text DAT，按 Run Script。
 TD 內執行時需儲存該 DAT，重開專案後再次 Run Script。
 重複執行會關閉該份程式自己的舊服務，再啟動新服務。
-關閉服務：關閉啟動視窗；TD 內則執行 A_OSC_RELAY_INSTANCE.stop()。
+關閉服務：關閉啟動視窗；TD 文字埠內則執行 import builtins; builtins._ac_a_zone_osc_relay.stop()。
 
 手機開 https://vistwinproject.github.io/A-Web/A_ZONE_OSC.html
 點右上角 OSC 設定，只填 192.168.200.143，按連線。

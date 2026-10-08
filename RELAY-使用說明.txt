@@ -1,27 +1,39 @@
 A 區 OSC 轉送服務
 
-在 TD 電腦（192.168.200.143）執行，手機與電腦在可互通的同一網路。
-方法一：A_OSC_RELAY.py 與 START-RELAY.cmd 放同一資料夾，雙擊 START-RELAY.cmd。
-方法二：將 A_OSC_RELAY.py 全部程式碼貼進 TD 的 Text DAT，按 Run Script。
-TD 內執行時需儲存該 DAT，重開專案後再次 Run Script。
-重複執行會關閉該份程式自己的舊服務，再啟動新服務。
-關閉服務：關閉啟動視窗；TD 文字埠內則執行 import builtins; builtins._ac_a_zone_osc_relay.stop()。
-
+TD 沿用已完成的 A_CENTER_OSC.51 與 B_SIDES.32（或更新版本）。本次不需改 TD。
 手機開 https://vistwinproject.github.io/A-Web/A_ZONE_OSC.html
-點右上角 OSC 設定，只填 192.168.200.143，按連線。
-不需要配對碼或 VPN。
 
-預設 Web TCP 8788；OSC 發送 127.0.0.1:9200；OSC 回傳 UDP 9202。
-TD 使用已更新的 A_CENTER_OSC.51（或更新版），需包含 /ac/scene、/ac/view、/ac/web/ping 回報。
-Scene1..5=/ac/scene 0..4；NO_VIEW=/ac/view 0；顯示=/ac/view 1。
-收到真正 TD 回報才啟用控制，保留 A→B 同步與切幕效果。
-服務不修改 TD 節點、影片、效果，不提供 Python 執行入口。
-8788 或 9202 被佔用時先關閉另一個 A 區轉送服务，不要同時啟動兩份。
-修改 Port：python A_OSC_RELAY.py --http-port 8788 --osc-port 9200 --reply-port 9202
+啟動轉送服務：
+方法一：A_OSC_RELAY.py 與 START-RELAY.cmd 放同一資料夾，雙擊 START-RELAY.cmd。
+方法二：將 A_OSC_RELAY.py 全部貼進 TD Text DAT，按 Run Script。
+重複 Run Script 會關閉該份程式自己的舊服务再啟動。重開 TD 後需再執行。
+關閉：在 TD 文字埠執行 import builtins; builtins._ac_a_zone_osc_relay.stop()。
 
-iPhone Safari 的 HTTPS 網頁→區網 HTTP 是否允許，取決於瀏覽器版本。
-允許時只填 IP 即可；若被瀏覽器阻擋，CORS 或 OSC 程式無法繞過。
-該情況需使用手機信任憑證的 HTTPS 轉送服務。
-程式支援：python A_OSC_RELAY.py --cert cert.pem --key key.pem
-網頁 IP 欄此時可填 https://192.168.200.143:8788。
-需自行準備手機信任、SAN 包含該 IP 的憑證；程式不會產生假信任憑證。
+右上「OSC 設定」保留完整欄位：
+轉送服務網址：http://192.168.200.143:8788（也可填電腦 IP 或完整 HTTPS 網址）
+TD IP：192.168.200.143；轉送與 TD 同機時可用 127.0.0.1
+UDP Port：9200
+回傳 Port：9202
+幕次 OSC 位址：/ac/scene，Scene 1–5 的 int32 為 0–4
+A 區開關 OSC 位址：/ac/view，NO_VIEW=0、顯示=1
+「連線／讀取設定」讀取現有設定；「儲存並連線」套用欄位，保存 config.json。
+若自行改通道，TD 接收端也須接受相同 OSC 位址。
+回傳 Port 被其他程式佔用時保留原設定。
+
+主面板「自動／手動」：
+服務每次啟動預設自動。Scene1 21.16秒 → Scene2 8秒 → Scene3 等待手勢／手動
+→ Scene4 13秒 → Scene5 30秒 → Scene1。
+點「播放設定」才會展開秒數欄位；第三幕固定等待互動，不會計時跳到第四幕。
+手動模式每幕維持原本 loop，任意按鈕可直接選幕。
+計時由轉送服務執行，手機離開頁面也能繼續；需保持轉送服務與 TD 運行。
+NO_VIEW 或 TD 失聯時暫停輪播，重新顯示／連線後目前幕次重新計時。
+秒數保存 playback.json；修改秒數重新計時，影片和發光效果不重播。
+不修改 TD SHOW_ctrl，只送原本 /ac/scene、/ac/view，沿用 A→B 和地面同步。
+不要同時執行兩份控制同一台 A 的轉送服務，以免兩組計時器互相切幕。
+
+Web TCP 8788、OSC UDP 9200、回傳 UDP 9202。
+程式僅轉送 A 區控制與接收回報，沒有網頁執行 Python 的入口。
+手機與轉送電腦需要網路互通；若瀏覽器要求區域網路存取，選允許。
+如瀏覽器阻擋 HTTPS 網頁到區網 HTTP，可使用手機信任的 HTTPS 轉送服務：
+python A_OSC_RELAY.py --cert cert.pem --key key.pem
+網址填 https://192.168.200.143:8788，憑證需包含该 IP 並已被手機信任。

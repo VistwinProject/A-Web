@@ -49,6 +49,55 @@ def validate_playback(data):
     return dict(durations=values[:])
 
 
+class Playback:
+    """Issue the existing scene OSC commands; never change the TD project."""
+    def __init__(self, durations=None):
+        self.durations = validate_playback(dict(durations=durations or [21.16, 8, None, 13, 30]))['durations']
+        self.automatic = True
+        self.reset()
+
+    def reset(self):
+        self.scene, self.view, self.started, self.requested = None, 0, None, None
+
+    def observe(self, state, now, reconnected=False):
+        changed = self.scene != state['sceneIndex']
+        if changed or reconnected or (not self.view and state['view']):
+            self.started = now
+        if changed or self.requested == state['sceneIndex']:
+            self.requested = None
+        self.scene, self.view = state['sceneIndex'], state['view']
+
+    def mode(self, value, now):
+        if type(value) is not int or value not in (0, 1):
+            raise ValueError('播放模式需為 0（手動）或 1（自動）')
+        if self.automatic != bool(value):
+            self.automatic, self.started = bool(value), now
+
+    def configure(self, values, now):
+        self.durations = validate_playback(dict(durations=values))['durations']
+        self.started = now
+
+    def command(self, scene, now):
+        if scene != self.scene:
+            self.requested = scene
+
+    def due(self, now, connected):
+        if not connected or not self.automatic or not self.view or self.scene is None or self.requested is not None or self.scene == 2:
+            return None
+        if now >= self.started + self.durations[self.scene]:
+            scene = (self.scene + 1) % 5
+            self.command(scene, now)
+            return scene
+        return None
+
+    def snapshot(self, now, connected):
+        duration = None if self.scene is None else self.durations[self.scene]
+        paused = 'disconnected' if not connected else 'NO_VIEW' if not self.view else None
+        remaining = (duration if paused else max(0, duration - (now - self.started))) if self.automatic and duration is not None else None
+        return dict(automatic=self.automatic, durations=self.durations[:], remaining=remaining,
+                    waitingHand=self.automatic and self.scene == 2, paused=paused, source='relay')
+
+
 def osc_string(value):
     data = value.encode('utf-8') + b'\0'
     return data + b'\0' * (-len(data) % 4)
@@ -85,6 +134,10 @@ class Relay:
         self.bind, self.config_path = bind, Path(config_path) if config_path else None
         if self.config_path and self.config_path.exists():
             self.config = validate_config(json.loads(self.config_path.read_text(encoding='utf-8-sig')))
+        self.playback_path = self.config_path.with_name('playback.json') if self.config_path else None
+        self.auto = Playback()
+        if self.playback_path and self.playback_path.exists():
+            self.auto.configure(json.loads(self.playback_path.read_text(encoding='utf-8-sig'))['durations'], time.monotonic())
         self.lock = threading.RLock()
         self.stopped = threading.Event()
         self.live, self.received, self.count, self.last_sent = None, 0.0, 0, None
@@ -125,9 +178,11 @@ class Relay:
                         or state['view'] not in (0, 1)):
                     continue
                 with self.lock:
+                    now = time.monotonic()
+                    self.auto.observe(state, now, not self.live or now - self.received >= 3.5)
                     self.live, self.received = state, time.monotonic()
                     for kind, value in list(self.pending.items()):
-                        actual = int(bool(state.get('playback', {}).get('automatic'))) if kind == 'mode' else state['sceneIndex' if kind == 'scene' else 'view']
+                        actual = state['sceneIndex' if kind == 'scene' else 'view']
                         if actual == value:
                             self.pending.pop(kind)
                     if state['sceneIndex'] != 2:
@@ -151,9 +206,11 @@ class Relay:
     def status(self):
         with self.lock:
             age = time.monotonic() - self.received
-            return dict(config=dict(self.config), connected=bool(self.live and age < 3.5),
+            connected = bool(self.live and age < 3.5)
+            state = dict(self.live, playback=self.auto.snapshot(time.monotonic(), connected)) if self.live else None
+            return dict(config=dict(self.config), connected=connected,
                         ageMs=round(age * 1000) if self.received else None,
-                        state=dict(self.live) if self.live else None, lastSent=self.last_sent,
+                        state=state, lastSent=self.last_sent,
                         count=self.count, lastError='', replyPort=self.config['replyPort'], urls=[])
 
     def record(self, address, value, source):
@@ -167,11 +224,14 @@ class Relay:
         if type(value) is not int or not 0 <= value <= maximum:
             raise ValueError('Scene 需為 0–4；View 需為 0／1')
         with self.lock:
+            if kind == 'mode':
+                self.auto.mode(value, time.monotonic())
+                return dict(sent=True, handledBy='relay', mode=value)
             if not self.status()['connected']:
                 raise ValueError('TD 尚未回報，請確認 A 檔已開啟及 OSC 9200')
-            if kind == 'mode' and not self.live.get('playback'):
-                raise ValueError('此 TD 版本尚未支援自動／手動，請使用更新後的 A 檔')
             address = self.config.get(kind + 'Address', '/ac/' + kind)
+            if kind == 'scene':
+                self.auto.command(value, time.monotonic())
             self.send(address, value)
             self.pending[kind] = value
             self.primary_at, self.hand_pending = time.monotonic(), False
@@ -200,6 +260,7 @@ class Relay:
             if reason:
                 return dict(sent=False, reason=reason)
             address = self.config.get('sceneAddress', '/ac/scene')
+            self.auto.command(3, time.monotonic())
             self.send(address, 3)
             self.hand_pending = True
             self.record(address, 3, 'hand')
@@ -233,6 +294,7 @@ class Relay:
                 previous.close()
             self.config = next_config
             self.live, self.received, self.pending = None, 0.0, {}
+            self.auto.reset()
             self.hand_pending, self.hand_clients = False, {}
             self.send('/ac/web/ping', self.config['replyPort'])
             return dict(config=dict(self.config))
@@ -240,16 +302,34 @@ class Relay:
     def playback(self, data):
         profile = validate_playback(data)
         with self.lock:
-            if not self.status()['connected'] or not self.live.get('playback'):
-                raise ValueError('請先連線至支援自動／手動的 A 檔')
-            value = json.dumps(profile, separators=(',', ':'))
-            self.send('/ac/playback', value)
-            self.record('/ac/playback', profile, 'primary')
-            self.send('/ac/web/ping', self.config['replyPort'])
-        return dict(sent=True, **profile)
+            if self.playback_path:
+                self.playback_path.parent.mkdir(parents=True, exist_ok=True)
+                temporary = self.playback_path.with_suffix('.tmp')
+                temporary.write_text(json.dumps(profile, indent=2) + '\n', encoding='utf-8')
+                os.replace(temporary, self.playback_path)
+            self.auto.configure(profile['durations'], time.monotonic())
+        return dict(sent=True, handledBy='relay', **profile)
+
+    def advance(self):
+        while not self.stopped.wait(.1):
+            with self.lock:
+                if self.pending:
+                    continue
+                scene = self.auto.due(time.monotonic(), self.status()['connected'])
+                if scene is None:
+                    continue
+                try:
+                    address = self.config.get('sceneAddress', '/ac/scene')
+                    self.send(address, scene)
+                    self.pending['scene'] = scene
+                    self.primary_at = time.monotonic()
+                    self.record(address, scene, 'auto')
+                    self.send('/ac/web/ping', self.config['replyPort'])
+                except OSError:
+                    self.auto.requested = None
 
     def start(self):
-        for task in (self.receive, self.ping, self.http.serve_forever):
+        for task in (self.receive, self.ping, self.advance, self.http.serve_forever):
             threading.Thread(target=task, daemon=True).start()
         print('A OSC Relay %s://電腦IP:%d | UDP %s:%d | reply %d' %
               (self.scheme, self.port, self.config['host'], self.config['port'], self.config['replyPort']))
@@ -324,8 +404,11 @@ def start(**options):
     if previous is not None:
         previous.stop()
     if 'config_path' not in options:
-        if 'td' in sys.modules and 'project' in globals():
-            options['config_path'] = str(Path(project.folder) / 'web/A_ZONE_OSC/config.json')
+        if 'td' in sys.modules:
+            try:
+                options['config_path'] = str(Path(project.folder) / 'web/A_ZONE_OSC/config.json')
+            except NameError:
+                options['config_path'] = str(Path(sys.modules['td'].project.folder) / 'web/A_ZONE_OSC/config.json')
         elif '__file__' in globals():
             options['config_path'] = str(Path(__file__).with_name('config.json'))
     instance = Relay(**options).start()

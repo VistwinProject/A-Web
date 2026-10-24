@@ -15,5 +15,5 @@
   "requirementsBeforeImplementation": [
     "核實每台 TD／網頁是否發聲、實際輸出及可用參數；沒有音源證據不可只加網頁滑桿。"
   ],
-  "standardSha256": "d934091a6e1bd8fde94905ac22efe19bb3d1ba97fb0d8493f9785cd3075682ed"
+  "standardSha256": "5ce083dbabe30616b4d0ede19a7446ec925dcfdb68898ef3d5cf2bafaafcff03"
 }

@@ -1,0 +1,181 @@
+{
+  "snapshot_date": "2026-10-24",
+  "timezone": "Asia/Taipei",
+  "scope": "Launchers and web only; excludes TD projects/media/runtime logs. Source timestamps are not commit dates.",
+  "files": [
+    {
+      "file": "A-CT/Final_A_Web/A_OSC_RELAY.py",
+      "bytes": 21973,
+      "modified_local": [
+        2026,
+        10,
+        9,
+        0,
+        42,
+        56
+      ],
+      "sha256": "dfa59bd56d9e57b266ccf7616f8d4f683bf09a6a3101a25e7ad6a035a171d1b6"
+    },
+    {
+      "file": "A-CT/Final_A_Web/A_ZONE_OSC.html",
+      "bytes": 26383,
+      "modified_local": [
+        2026,
+        10,
+        14,
+        21,
+        37,
+        10
+      ],
+      "sha256": "b299df550df9689afface8c957c758c811ce60ff30d8f5fdb1c9c137d35d8588"
+    },
+    {
+      "file": "A-CT/Final_A_Web/bridge-client.mjs",
+      "bytes": 2675,
+      "modified_local": [
+        2026,
+        10,
+        11,
+        4,
+        31,
+        42
+      ],
+      "sha256": "2c31bcc451c98a8177b4d7800776c71e094f0b655c41d6f1a36d231768597a56"
+    },
+    {
+      "file": "A-CT/Final_A_Web/config.json",
+      "bytes": 123,
+      "modified_local": [
+        2026,
+        10,
+        11,
+        21,
+        21,
+        26
+      ],
+      "sha256": "d588a2a7dc9f5032238b774676a7e17216d560c2cf708b9402932c850ca6e865"
+    },
+    {
+      "file": "A-CT/Final_A_Web/OPEN-LOCAL-WEB.ps1",
+      "bytes": 959,
+      "modified_local": [
+        2026,
+        10,
+        11,
+        4,
+        12,
+        42
+      ],
+      "sha256": "d996929fcc5349fe2126bffb75b6d6e75aafab518b1c5fdf29871048e46e4d38"
+    },
+    {
+      "file": "A-CT/Final_A_Web/osc.mjs",
+      "bytes": 2836,
+      "modified_local": [
+        2026,
+        10,
+        8,
+        23,
+        35,
+        48
+      ],
+      "sha256": "15fe7d11451ef1667db09711f933bcc419a6cd83b9e5a23b46b7b4519cda1610"
+    },
+    {
+      "file": "A-CT/Final_A_Web/package.json",
+      "bytes": 147,
+      "modified_local": [
+        2026,
+        10,
+        7,
+        0,
+        1,
+        14
+      ],
+      "sha256": "2decf9231110d066cc61b5a63a0a2f7c81c08c9debe3e29b9062a8a1ee5e601f"
+    },
+    {
+      "file": "A-CT/Final_A_Web/playback.json",
+      "bytes": 70,
+      "modified_local": [
+        2026,
+        10,
+        15,
+        2,
+        27,
+        8
+      ],
+      "sha256": "8b00c4d8ecb7ec3985a48a2b23d6a261e3b394d533f839ef24f7737835c1951f"
+    },
+    {
+      "file": "A-CT/Final_A_Web/playback.mjs",
+      "bytes": 2251,
+      "modified_local": [
+        2026,
+        10,
+        12,
+        1,
+        53,
+        28
+      ],
+      "sha256": "4eecda26e7f685039d40932888c44f8c1be0326d3430367add15b160a04d4449"
+    },
+    {
+      "file": "A-CT/Final_A_Web/server.mjs",
+      "bytes": 10830,
+      "modified_local": [
+        2026,
+        10,
+        12,
+        1,
+        53,
+        28
+      ],
+      "sha256": "d3fe6020626a686a2bd4e69a49956827a5e67e83cd71c717f0db83b32b4ecb7f"
+    },
+    {
+      "file": "A-CT/Final_A_Web/START-RELAY.cmd",
+      "bytes": 225,
+      "modified_local": [
+        2026,
+        10,
+        8,
+        23,
+        9,
+        22
+      ],
+      "sha256": "68c9b57b6fb87680e2835f65e3645998987f5faff629067477e9ef4e8b76f465"
+    },
+    {
+      "file": "A-CT/Final_A_Web/START-WEB.cmd",
+      "bytes": 231,
+      "modified_local": [
+        2026,
+        10,
+        7,
+        0,
+        1,
+        16
+      ],
+      "sha256": "a07690f1780ec41d2199836a4dbf3e589de2c130aceff9700af5776b13d22639"
+    },
+    {
+      "file": "A-CT/A_Final_start.ps1",
+      "bytes": 5923,
+      "modified_local": "2026-10-22 14:27 (Explorer minute precision)",
+      "sha256": "88ff93245966ae09f2ef0aaf42615ab98366acf87cbc44c32807f89841221a2f"
+    },
+    {
+      "file": "launchers/central/A_Final_cmd.cmd",
+      "modified_local": "2026-10-11 23:18",
+      "bytes": 134,
+      "sha256": "657589813006698d3ff9a5d4642697230a5111b5ad8fcaf06dfc52052b2d6be0"
+    },
+    {
+      "file": "launchers/sides/A_LR_Final_cmd.cmd",
+      "modified_local": "2026-10-13 21:59",
+      "bytes": 4825,
+      "sha256": "e38e011a47b12da571843522714ef304a93e13d0fc6b3099a350b371eacc8b16"
+    }
+  ]
+}

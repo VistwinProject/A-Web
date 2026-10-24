@@ -1,0 +1,11 @@
+node_modules/
+*.log
+__pycache__/
+*.pyc
+*.toe
+*.tox
+*.mp4
+*.mov
+*.wav
+*.mp3
+*.zip

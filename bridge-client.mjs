@@ -1,3 +1,8 @@
+function requestTimeoutSignal(ms){
+ if(typeof AbortSignal!=='undefined'&&typeof AbortSignal.timeout==='function')return AbortSignal.timeout(ms);
+ if(typeof AbortController==='undefined')return undefined;
+ const controller=new AbortController();setTimeout(()=>controller.abort(),ms);return controller.signal;
+}
 export const DEFAULT_BRIDGE='http://192.168.200.143:8788';
 export function initialBridge({published,origin,saved='',presetApplied=false}){if(!published)return origin;return presetApplied&&saved?bridgeOrigin(saved):DEFAULT_BRIDGE;}
 export function bridgeOrigin(value){
@@ -10,7 +15,7 @@ export function bridgeOrigin(value){
 }
 export function relayInput(base){const normalized=bridgeOrigin(base),url=new URL(normalized);return url.pathname==='/'&&url.protocol==='http:'&&/^\d{1,3}(\.\d{1,3}){3}$/.test(url.hostname)?url.hostname+(url.port&&url.port!=='8788'?':'+url.port:''):normalized;}
 export function bridgeRequest(base,route,data){
- const origin=bridgeOrigin(base);if(!origin)throw Error('請在 OSC 設定填入電腦 IP');const options={cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(5000)};
+ const origin=bridgeOrigin(base);if(!origin)throw Error('請在 OSC 設定填入電腦 IP');const options={cache:'no-store',credentials:'omit',signal:requestTimeoutSignal(5000)};
  if(data){options.method='POST';options.headers={'Content-Type':'application/json'};options.body=JSON.stringify(data);}
  const host=new URL(origin).hostname;if(host==='localhost'||host==='127.0.0.1'||host==='[::1]')options.targetAddressSpace='loopback';else if(/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host)||host.endsWith('.local'))options.targetAddressSpace='local';return {url:origin+route,options};
 }
